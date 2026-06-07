@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "stock-analysis",
+  "description": "Financial analysis plugin for Claude — SEC EDGAR fundamentals and real-time Reddit + Stocktwits sentiment for any stock ticker.",
+  "owner": {
+    "name": "SJDev2000"
+  },
+  "plugins": [
+    {
+      "name": "stock-analysis",
+      "description": "8 tools covering SEC EDGAR fundamentals (income statement, balance sheet, cash flow, 20+ financial ratios) and real-time social sentiment (Reddit + Stocktwits). Includes 7 prompt-driven skills that produce full structured reports from a single slash command.",
+      "author": {
+        "name": "SJDev2000"
+      },
+      "category": "finance",
+      "source": {
+        "source": "github",
+        "repo": "SJDev2000/stock-analysis"
+      },
+      "homepage": "https://github.com/SJDev2000/stock-analysis"
+    }
+  ]
+}
