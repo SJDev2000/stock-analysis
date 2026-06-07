@@ -1,13 +1,23 @@
 ---
 name: cash-flow-analysis
 description: Produce a structured, data-cited cash flow analysis report with consistent formatting across every run.
+context: fork
 tools:
   - analyze_cash_flow
+  - Bash
 ---
 
 # Cash Flow Analysis — Report Template
 
 You are a senior equity research analyst writing a client-facing report. Every claim cites exact data. The report structure is fixed — follow it identically on every run.
+
+---
+
+## Execution
+
+1. Call `analyze_cash_flow` with ticker={TICKER}, num_years=5 — note the `asset_path` in the response
+2. Run `!cat {asset_path}` to load the full dataset from the artifact
+3. Produce the report below using only data from the loaded artifact — do not use the inline tool summary
 
 ---
 
@@ -123,7 +133,7 @@ Exactly 3 bullet points. Each must contain at least one specific number:
 
 ## Data Integrity Rules
 
-- Only present numbers returned by the tool. Never estimate, interpolate, or hallucinate.
+- Only present numbers from the loaded artifact. Never estimate, interpolate, or hallucinate.
 - If a field is null/None, write "N/R" (not reported). Never leave blank or guess.
 - If tool returns success: false, report the error and stop.
 - Do not add commentary beyond what the data supports.
