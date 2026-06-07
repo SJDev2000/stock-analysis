@@ -5,6 +5,7 @@
 assets/reddit_sentiment/
 assets/stocktwits/
 assets/reports/
+artifacts/
 
 # Python
 __pycache__/
