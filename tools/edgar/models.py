@@ -106,3 +106,112 @@ class IncomeStatementReport:
     revenue_segments: List[Dict] = field(default_factory=list)
     top_segment: Optional[Dict] = None
     summary: Dict = field(default_factory=dict)
+
+
+@dataclass
+class BalanceSheetMetrics:
+    period: str
+    period_instant: Optional[str] = None
+    fiscal_year: Optional[int] = None
+    filing_date: Optional[str] = None
+    total_assets: Optional[float] = None
+    current_assets: Optional[float] = None
+    noncurrent_assets: Optional[float] = None
+    cash_and_equivalents: Optional[float] = None
+    marketable_securities: Optional[float] = None
+    accounts_receivable: Optional[float] = None
+    inventory: Optional[float] = None
+    property_plant_equipment: Optional[float] = None
+    goodwill: Optional[float] = None
+    intangible_assets: Optional[float] = None
+    total_liabilities: Optional[float] = None
+    current_liabilities: Optional[float] = None
+    noncurrent_liabilities: Optional[float] = None
+    long_term_debt: Optional[float] = None
+    current_debt: Optional[float] = None
+    accounts_payable: Optional[float] = None
+    total_stockholders_equity: Optional[float] = None
+    retained_earnings: Optional[float] = None
+    shares_outstanding: Optional[float] = None
+    working_capital: Optional[float] = None
+    total_debt: Optional[float] = None
+    net_cash: Optional[float] = None
+    book_value_per_share: Optional[float] = None
+    current_ratio: Optional[float] = None
+    debt_to_equity: Optional[float] = None
+    debt_to_assets: Optional[float] = None
+
+
+@dataclass
+class CashFlowMetrics:
+    period: str
+    period_type: str
+    fiscal_year: Optional[int] = None
+    filing_date: Optional[str] = None
+    operating_cash_flow: Optional[float] = None
+    depreciation_amortization: Optional[float] = None
+    stock_based_compensation: Optional[float] = None
+    investing_cash_flow: Optional[float] = None
+    capital_expenditures: Optional[float] = None
+    acquisitions: Optional[float] = None
+    financing_cash_flow: Optional[float] = None
+    dividends_paid: Optional[float] = None
+    share_buybacks: Optional[float] = None
+    debt_issued: Optional[float] = None
+    debt_repaid: Optional[float] = None
+    free_cash_flow: Optional[float] = None
+    fcf_margin_pct: Optional[float] = None
+    capex_to_revenue_pct: Optional[float] = None
+    shareholder_return: Optional[float] = None
+
+
+@dataclass
+class ProfitabilityRatios:
+    period: str
+    fiscal_year: Optional[int] = None
+    gross_margin_pct: Optional[float] = None
+    operating_margin_pct: Optional[float] = None
+    net_margin_pct: Optional[float] = None
+    return_on_assets_pct: Optional[float] = None
+    return_on_equity_pct: Optional[float] = None
+    return_on_invested_capital_pct: Optional[float] = None
+    free_cash_flow_margin_pct: Optional[float] = None
+
+
+@dataclass
+class LeverageRatios:
+    period: str
+    fiscal_year: Optional[int] = None
+    debt_to_equity: Optional[float] = None
+    debt_to_assets: Optional[float] = None
+    interest_coverage: Optional[float] = None
+    net_debt_to_ebitda: Optional[float] = None
+    equity_multiplier: Optional[float] = None
+    current_ratio: Optional[float] = None
+    quick_ratio: Optional[float] = None
+
+
+@dataclass
+class ValuationRatios:
+    period: str
+    fiscal_year: Optional[int] = None
+    book_value_per_share: Optional[float] = None
+    earnings_per_share: Optional[float] = None
+    revenue_per_share: Optional[float] = None
+    free_cash_flow_per_share: Optional[float] = None
+
+
+@dataclass
+class OperatingRatios:
+    period: str
+    fiscal_year: Optional[int] = None
+    asset_turnover: Optional[float] = None
+    inventory_turnover: Optional[float] = None
+    receivables_turnover: Optional[float] = None
+    payables_turnover: Optional[float] = None
+    days_sales_outstanding: Optional[float] = None
+    days_inventory_outstanding: Optional[float] = None
+    days_payable_outstanding: Optional[float] = None
+    cash_conversion_cycle: Optional[float] = None
+    capex_to_revenue_pct: Optional[float] = None
+    sbc_to_revenue_pct: Optional[float] = None
