@@ -187,9 +187,8 @@ def _annotated_to_json_schema(raw_schema: dict) -> dict:
     properties = {}
     required = []
     for param, annotation in raw_schema.items():
-        origin = getattr(annotation, "__origin__", None)
         args = getattr(annotation, "__args__", ())
-        if origin is typing.Annotated and args:
+        if typing.get_origin(annotation) is typing.Annotated and args:
             base_type = args[0]
             description = args[1] if len(args) > 1 and isinstance(args[1], str) else ""
             list_origin = getattr(base_type, "__origin__", None)
@@ -220,6 +219,35 @@ def _sdk_tool_to_mcp(sdk_tool) -> types.Tool:
         description=sdk_tool.description or "",
         inputSchema=schema,
     )
+
+
+_JSON_TYPE_COERCERS = {
+    "integer": int,
+    "number": float,
+    "boolean": lambda v: v if isinstance(v, bool) else str(v).lower() not in ("false", "0", ""),
+    "string": str,
+}
+
+
+def _coerce_args(arguments: dict, sdk_tool) -> dict:
+    """Coerce MCP string arguments to the types declared in the tool's JSON schema."""
+    raw = sdk_tool.input_schema or {}
+    if not raw or "properties" in raw:
+        schema = raw
+    else:
+        schema = _annotated_to_json_schema(raw)
+    props = schema.get("properties", {})
+    coerced = dict(arguments)
+    for key, val in arguments.items():
+        prop = props.get(key, {})
+        json_type = prop.get("type")
+        coercer = _JSON_TYPE_COERCERS.get(json_type)
+        if coercer and not isinstance(val, (int, float, bool, list, dict)):
+            try:
+                coerced[key] = coercer(val)
+            except (ValueError, TypeError):
+                pass
+    return coerced
 
 
 # ── Server assembly ──────────────────────────────────────────────────────────
@@ -259,6 +287,7 @@ def build_server() -> Server:
         sdk_tool = _TOOL_MAP.get(name)
         if sdk_tool is None:
             raise ValueError(f"Unknown tool: {name}")
+        arguments = _coerce_args(arguments, sdk_tool)
         result = await sdk_tool.handler(arguments)
         # SDK tools return {"content": [{"type": "text", "text": "..."}], ...}
         content_blocks = result.get("content", [])
