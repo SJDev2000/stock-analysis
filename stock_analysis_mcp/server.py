@@ -212,7 +212,7 @@ def _coerce_args(arguments: dict, sdk_tool) -> dict:
 def build_server() -> Server:
     server = Server(
         name="stock-analysis",
-        version="1.0.3",
+        version="1.0.4",
         instructions=(
             "Stock Analysis MCP — 8 tools for SEC EDGAR financial data and "
             "Reddit/Stocktwits sentiment. Use the 3 prompts (sentiment-analysis, "
