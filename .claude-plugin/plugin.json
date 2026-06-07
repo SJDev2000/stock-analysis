@@ -1,0 +1,21 @@
+{
+  "name": "stock-analysis",
+  "description": "8 tools for SEC EDGAR financial data and Reddit/Stocktwits sentiment, plus 7 prompt-driven analysis skills for any stock ticker.",
+  "version": "1.0.3",
+  "author": {
+    "name": "SJDev2000"
+  },
+  "repository": "https://github.com/SJDev2000/stock-analysis",
+  "homepage": "https://github.com/SJDev2000/stock-analysis",
+  "license": "MIT",
+  "keywords": [
+    "finance",
+    "stocks",
+    "sec-edgar",
+    "sentiment",
+    "reddit",
+    "stocktwits",
+    "fundamentals",
+    "mcp"
+  ]
+}
