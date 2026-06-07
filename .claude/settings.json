@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp *)",
+      "mcp__stock-analysis__analyze_company_profile",
+      "mcp__stock-analysis__fetch_stocktwits_stream",
+      "mcp__edgar__analyze_income_statement",
+      "mcp__edgar__analyze_balance_sheet",
+      "mcp__edgar__analyze_cash_flow",
+      "mcp__edgar__analyze_financial_ratios",
+      "mcp__edgar__analyze_company_profile",
+      "mcp__edgar__fetch_reddit_posts",
+      "mcp__edgar__fetch_reddit_comments",
+      "mcp__edgar__fetch_stocktwits_stream"
+    ]
+  }
+}
