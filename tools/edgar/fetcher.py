@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any, Dict, List
 
 import pandas as pd
-from edgar import Company, set_identity
+from edgar import Company, set_identity, configure_http
 
 from tools.edgar.models import (
     BalanceSheetMetrics,
@@ -27,6 +27,9 @@ from tools.edgar.xbrl import (
 )
 
 set_identity("Stock Analysis Tool contact@example.com")
+
+# Disable SSL verification to handle self-signed certificates in the chain
+configure_http(verify_ssl=False)
 
 
 class EdgarFetcher:
