@@ -2,8 +2,8 @@
   "mcpServers": {
     "stock-analysis": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["stock-analysis-mcp"],
+      "command": "/home/jainsai/.pyenv/versions/3.10.17/bin/python3",
+      "args": ["-m", "stock_analysis_mcp.server"],
       "env": {
         "REDDIT_USERNAME": "${REDDIT_USERNAME}"
       }
