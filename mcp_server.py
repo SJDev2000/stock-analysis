@@ -1,93 +1,85 @@
 #!/usr/bin/env python3
 """
-Stock Analysis MCP Plugin — stdio transport.
+Stock Analysis MCP Server — stdio transport.
 
-Exposes the full bundle as a single MCP server:
-  - 8 tools  (SEC EDGAR + sentiment data fetchers)
-  - 7 prompts (skills — invoke with a ticker to get a structured analysis)
+Exposes:
+  - 8 tools  : SEC EDGAR financial data + Reddit/Stocktwits sentiment fetchers
+  - 3 prompts: sentiment-analysis, fundamental-analysis, company-overview
 
-Install in Claude Code (one command):
+The remaining skill files (income-statement-analysis, balance-sheet-analysis,
+cash-flow-analysis, stocktwits-sentiment) are used internally by the 3 prompts
+and are not surfaced as user-facing prompts.
+
+Install:
     claude mcp add stock-analysis -- python /path/to/mcp_server.py
-
-Install in Claude Desktop (claude_desktop_config.json):
-    {
-      "mcpServers": {
-        "stock-analysis": {
-          "command": "python",
-          "args": ["/absolute/path/to/mcp_server.py"],
-          "env": { "ANTHROPIC_API_KEY": "...", "REDDIT_USERNAME": "..." }
-        }
-      }
-    }
-
-Once installed, prompts appear in Claude Code as slash commands:
-    /stock-analysis:sentiment-analysis     → asks for ticker, runs full report
-    /stock-analysis:fundamental-analysis   → asks for ticker, runs full report
-    etc.
 """
 
 import asyncio
+import logging
 import sys
+import typing
 from pathlib import Path
 
-# Project root on path so tools/ is importable when run from any directory
+# Project root on sys.path so all local packages resolve correctly
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dotenv import load_dotenv
 load_dotenv()
 
-# ── Skill file resolution (works both in dev and after pip/uvx install) ───────
-def _resolve_skills_dir() -> Path:
-    # 1. Installed package: importlib.resources (Python 3.9+)
-    try:
-        from importlib.resources import files
-        pkg = files("skills")
-        # Verify at least one expected file exists
-        if (pkg / "sentiment-analysis.md").is_file():
-            return Path(str(pkg))
-    except Exception:
-        pass
-    # 2. Dev checkout: .claude/skills/ next to this file
-    dev_path = Path(__file__).parent / ".claude" / "skills"
-    if dev_path.is_dir():
-        return dev_path
-    raise RuntimeError(
-        "Skills directory not found. Run `pip install -e .` in the project root "
-        "or ensure .claude/skills/ exists."
-    )
-
 import mcp.types as types
 from mcp.server.lowlevel.server import Server
 from mcp.server.stdio import stdio_server
-
-# ── Tool function imports ────────────────────────────────────────────────────
 
 from tools.edgar import (
     analyze_income_statement,
     analyze_balance_sheet,
     analyze_cash_flow,
     analyze_company_profile,
+    analyze_financial_ratios,
 )
-from tools.analysis import analyze_financial_ratios
 from tools.reddit import fetch_reddit_posts, fetch_reddit_comments
 from tools.stocktwits import fetch_stocktwits_stream
 
-# ── Skill (prompt) definitions ───────────────────────────────────────────────
+logger = logging.getLogger(__name__)
 
-_SKILLS_DIR = _resolve_skills_dir()
+# ── Skills directory ──────────────────────────────────────────────────────────
+
+def _find_skills_dir() -> Path:
+    """Locate the skills directory — works in dev checkout and after pip install."""
+    try:
+        from importlib.resources import files
+        pkg = files("skills")
+        if (pkg / "sentiment-analysis.md").is_file():
+            return Path(str(pkg))
+    except Exception:
+        pass
+    dev = Path(__file__).parent / ".claude" / "skills"
+    if dev.is_dir():
+        return dev
+    raise RuntimeError(
+        "Skills directory not found. Ensure .claude/skills/ exists or run `pip install -e .`"
+    )
+
+_SKILLS_DIR = _find_skills_dir()
+
 
 def _load_skill(filename: str) -> str:
     return (_SKILLS_DIR / filename).read_text(encoding="utf-8")
 
 
-# Each entry: (prompt_name, title, description, skill_file)
-_SKILL_REGISTRY = [
+# ── Prompt registry ───────────────────────────────────────────────────────────
+# Only these 3 are exposed to the user via list_prompts.
+# Other skill files (income-statement-analysis, balance-sheet-analysis,
+# cash-flow-analysis, stocktwits-sentiment) are used internally.
+
+_USER_PROMPTS: list[tuple[str, str, str, str]] = [
+    # (name, title, description, skill_file)
     (
         "sentiment-analysis",
         "Sentiment Analysis",
         "Multi-source sentiment report (Reddit + Stocktwits) for a stock ticker. "
-        "Fetches live data, scores labeled and unlabeled messages, and produces an "
-        "11-section report with composite FSS, signal distribution, cross-platform "
+        "Fetches live data, scores labeled and unlabeled messages, and produces a "
+        "structured report with composite FSS, signal distribution, cross-platform "
         "divergence, and a trading signal.",
         "sentiment-analysis.md",
     ),
@@ -100,40 +92,11 @@ _SKILL_REGISTRY = [
         "fundamental-analysis.md",
     ),
     (
-        "income-statement-analysis",
-        "Income Statement Analysis",
-        "5-year annual + 4-quarter income statement analysis with YoY/QoQ growth, "
-        "margin trends, revenue segments, and CAGR — from SEC EDGAR.",
-        "income-statement-analysis.md",
-    ),
-    (
-        "balance-sheet-analysis",
-        "Balance Sheet Analysis",
-        "Multi-year balance sheet covering assets, liabilities, equity, working "
-        "capital, debt structure, and key liquidity/leverage ratios.",
-        "balance-sheet-analysis.md",
-    ),
-    (
-        "cash-flow-analysis",
-        "Cash Flow Analysis",
-        "Multi-year operating, investing, and financing cash flows with FCF margin, "
-        "CapEx intensity, and capital allocation breakdown.",
-        "cash-flow-analysis.md",
-    ),
-    (
         "company-overview",
         "Company Overview",
         "Company identity, capital structure, business overview, and classified risk "
-        "factors extracted from the latest 10-K filing.",
+        "factors extracted from the latest 10-K filing on SEC EDGAR.",
         "company-overview.md",
-    ),
-    (
-        "stocktwits-sentiment",
-        "Stocktwits Sentiment",
-        "Scores the 30 latest Stocktwits messages for a ticker — labeled and "
-        "unlabeled — and returns a compact structured JSON block with FSS, signal "
-        "distribution, top themes, and notable messages.",
-        "stocktwits-sentiment.md",
     ),
 ]
 
@@ -143,20 +106,27 @@ _TICKER_ARG = types.PromptArgument(
     required=True,
 )
 
+_PROMPTS: list[types.Prompt] = [
+    types.Prompt(name=name, title=title, description=desc, arguments=[_TICKER_ARG])
+    for name, title, desc, _ in _USER_PROMPTS
+]
 
-def _build_prompt_message(skill_text: str, ticker: str) -> types.PromptMessage:
-    """Inject the ticker into the skill body and return a user-role prompt message."""
-    content = skill_text.replace("{TICKER}", ticker.upper()).replace("{ticker}", ticker.upper())
+_SKILL_TEXT: dict[str, str] = {
+    name: _load_skill(filename)
+    for name, _, _, filename in _USER_PROMPTS
+}
+
+
+def _render_prompt(skill_text: str, ticker: str) -> types.PromptMessage:
+    """Inject ticker into skill body and return a user-role prompt message."""
+    body = skill_text.replace("{TICKER}", ticker.upper()).replace("{ticker}", ticker.upper())
     return types.PromptMessage(
         role="user",
-        content=types.TextContent(type="text", text=f"Ticker: {ticker.upper()}\n\n{content}"),
+        content=types.TextContent(type="text", text=f"Ticker: {ticker.upper()}\n\n{body}"),
     )
 
 
-# ── MCP tool wrappers ────────────────────────────────────────────────────────
-# claude_agent_sdk @tool functions are already async callables that accept a
-# dict of args and return an MCP response dict.  We need thin wrappers to adapt
-# them to the raw mcp.Server call_tool interface (args arrive as a plain dict).
+# ── Tool registry ─────────────────────────────────────────────────────────────
 
 _SDK_TOOLS = [
     analyze_income_statement,
@@ -169,11 +139,9 @@ _SDK_TOOLS = [
     fetch_stocktwits_stream,
 ]
 
-# name → SdkMcpTool
-_TOOL_MAP = {t.name: t for t in _SDK_TOOLS}
+_TOOL_MAP: dict[str, object] = {t.name: t for t in _SDK_TOOLS}
 
-
-_ANNOTATED_TYPE_MAP = {
+_PY_TO_JSON_TYPE = {
     int: "integer",
     float: "number",
     bool: "boolean",
@@ -182,46 +150,37 @@ _ANNOTATED_TYPE_MAP = {
 }
 
 
-def _annotated_to_json_schema(raw_schema: dict) -> dict:
-    import typing
-    properties = {}
-    required = []
-    for param, annotation in raw_schema.items():
-        args = getattr(annotation, "__args__", ())
-        if typing.get_origin(annotation) is typing.Annotated and args:
+def _build_json_schema(raw: dict) -> dict:
+    """Convert Annotated-type dict (from claude_agent_sdk) to JSON Schema object."""
+    properties: dict = {}
+    required: list = []
+    for param, annotation in raw.items():
+        if typing.get_origin(annotation) is typing.Annotated:
+            args = annotation.__args__
             base_type = args[0]
-            description = args[1] if len(args) > 1 and isinstance(args[1], str) else ""
-            list_origin = getattr(base_type, "__origin__", None)
-            if list_origin is list:
-                item_type = getattr(base_type, "__args__", (str,))[0]
-                prop = {"type": "array", "items": {"type": _ANNOTATED_TYPE_MAP.get(item_type, "string")}}
+            description = next((a for a in args[1:] if isinstance(a, str)), "")
+            if typing.get_origin(base_type) is list:
+                item_py = getattr(base_type, "__args__", (str,))[0]
+                prop: dict = {"type": "array", "items": {"type": _PY_TO_JSON_TYPE.get(item_py, "string")}}
             else:
-                prop = {"type": _ANNOTATED_TYPE_MAP.get(base_type, "string")}
+                prop = {"type": _PY_TO_JSON_TYPE.get(base_type, "string")}
             if description:
                 prop["description"] = description
-            properties[param] = prop
-            required.append(param)
         else:
-            properties[param] = annotation if isinstance(annotation, dict) else {"type": "string"}
-            required.append(param)
+            prop = annotation if isinstance(annotation, dict) else {"type": "string"}
+        properties[param] = prop
+        required.append(param)
     return {"type": "object", "properties": properties, "required": required}
 
 
-def _sdk_tool_to_mcp(sdk_tool) -> types.Tool:
-    """Convert a claude_agent_sdk SdkMcpTool into an mcp.types.Tool."""
+def _tool_schema(sdk_tool) -> dict:
     raw = sdk_tool.input_schema or {}
     if raw and "properties" not in raw:
-        schema = _annotated_to_json_schema(raw)
-    else:
-        schema = raw or {"type": "object", "properties": {}}
-    return types.Tool(
-        name=sdk_tool.name,
-        description=sdk_tool.description or "",
-        inputSchema=schema,
-    )
+        return _build_json_schema(raw)
+    return raw or {"type": "object", "properties": {}}
 
 
-_JSON_TYPE_COERCERS = {
+_COERCE: dict = {
     "integer": int,
     "number": float,
     "boolean": lambda v: v if isinstance(v, bool) else str(v).lower() not in ("false", "0", ""),
@@ -230,27 +189,21 @@ _JSON_TYPE_COERCERS = {
 
 
 def _coerce_args(arguments: dict, sdk_tool) -> dict:
-    """Coerce MCP string arguments to the types declared in the tool's JSON schema."""
-    raw = sdk_tool.input_schema or {}
-    if not raw or "properties" in raw:
-        schema = raw
-    else:
-        schema = _annotated_to_json_schema(raw)
-    props = schema.get("properties", {})
-    coerced = dict(arguments)
+    """Coerce string arguments from MCP to the types declared in the tool schema."""
+    props = _tool_schema(sdk_tool).get("properties", {})
+    result = dict(arguments)
     for key, val in arguments.items():
-        prop = props.get(key, {})
-        json_type = prop.get("type")
-        coercer = _JSON_TYPE_COERCERS.get(json_type)
+        json_type = props.get(key, {}).get("type")
+        coercer = _COERCE.get(json_type)
         if coercer and not isinstance(val, (int, float, bool, list, dict)):
             try:
-                coerced[key] = coercer(val)
+                result[key] = coercer(val)
             except (ValueError, TypeError):
                 pass
-    return coerced
+    return result
 
 
-# ── Server assembly ──────────────────────────────────────────────────────────
+# ── Server ────────────────────────────────────────────────────────────────────
 
 def build_server() -> Server:
     server = Server(
@@ -258,26 +211,28 @@ def build_server() -> Server:
         version="1.0.0",
         instructions=(
             "Stock Analysis MCP — 8 tools for SEC EDGAR financial data and "
-            "Reddit/Stocktwits sentiment, plus 7 prompt-based analysis skills. "
-            "Use the prompts (skills) to run full structured reports by ticker; "
-            "use the tools directly for raw data access."
+            "Reddit/Stocktwits sentiment. Use the 3 prompts (sentiment-analysis, "
+            "fundamental-analysis, company-overview) to run full structured reports "
+            "by ticker; use tools directly for raw data access."
         ),
     )
-
-    # ── Tools ────────────────────────────────────────────────────────────────
 
     @server.list_tools()
     async def list_tools() -> list[types.Tool]:
         tools = []
         for sdk_fn in _TOOL_MAP.values():
             try:
-                tools.append(_sdk_tool_to_mcp(sdk_fn))
-            except Exception:
-                # Fallback: minimal tool definition
-                name = getattr(sdk_fn, "_tool_name", sdk_fn.__name__)
+                schema = _tool_schema(sdk_fn)
                 tools.append(types.Tool(
-                    name=name,
-                    description=getattr(sdk_fn, "_tool_description", ""),
+                    name=sdk_fn.name,
+                    description=sdk_fn.description or "",
+                    inputSchema=schema,
+                ))
+            except Exception:
+                logger.exception("Failed to build schema for tool %s", getattr(sdk_fn, "name", "?"))
+                tools.append(types.Tool(
+                    name=getattr(sdk_fn, "name", sdk_fn.__name__),
+                    description=getattr(sdk_fn, "description", ""),
                     inputSchema={"type": "object", "properties": {}},
                 ))
         return tools
@@ -286,69 +241,49 @@ def build_server() -> Server:
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         sdk_tool = _TOOL_MAP.get(name)
         if sdk_tool is None:
-            raise ValueError(f"Unknown tool: {name}")
-        arguments = _coerce_args(arguments, sdk_tool)
-        result = await sdk_tool.handler(arguments)
-        # SDK tools return {"content": [{"type": "text", "text": "..."}], ...}
-        content_blocks = result.get("content", [])
-        return [
-            types.TextContent(type="text", text=block.get("text", ""))
-            for block in content_blocks
-            if block.get("type") == "text"
-        ]
-
-    # ── Prompts (skills) ─────────────────────────────────────────────────────
-
-    _prompts: list[types.Prompt] = [
-        types.Prompt(
-            name=name,
-            title=title,
-            description=description,
-            arguments=[_TICKER_ARG],
-        )
-        for name, title, description, _ in _SKILL_REGISTRY
-    ]
-
-    _skill_text: dict[str, str] = {
-        name: _load_skill(filename)
-        for name, _, _, filename in _SKILL_REGISTRY
-    }
+            raise ValueError(f"Unknown tool: {name!r}")
+        try:
+            coerced = _coerce_args(arguments, sdk_tool)
+            result = await sdk_tool.handler(coerced)
+            return [
+                types.TextContent(type="text", text=block.get("text", ""))
+                for block in result.get("content", [])
+                if block.get("type") == "text"
+            ]
+        except Exception as exc:
+            logger.exception("Tool %r failed", name)
+            return [types.TextContent(type="text", text=f"Error in {name}: {exc}")]
 
     @server.list_prompts()
     async def list_prompts() -> list[types.Prompt]:
-        return _prompts
+        return _PROMPTS
 
     @server.get_prompt()
     async def get_prompt(name: str, arguments: dict[str, str] | None) -> types.GetPromptResult:
-        skill_text = _skill_text.get(name)
+        skill_text = _SKILL_TEXT.get(name)
         if skill_text is None:
-            raise ValueError(f"Unknown prompt: {name}")
+            raise ValueError(f"Unknown prompt: {name!r}")
         ticker = (arguments or {}).get("ticker", "TICKER")
+        description = next((desc for n, _, desc, _ in _USER_PROMPTS if n == name), "")
         return types.GetPromptResult(
-            description=next(
-                (desc for n, _, desc, _ in _SKILL_REGISTRY if n == name), ""
-            ),
-            messages=[_build_prompt_message(skill_text, ticker)],
+            description=description,
+            messages=[_render_prompt(skill_text, ticker)],
         )
 
     return server
 
 
-# ── Entry points ─────────────────────────────────────────────────────────────
+# ── Entry points ──────────────────────────────────────────────────────────────
 
-async def main() -> None:
+async def _run() -> None:
     server = build_server()
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
-def main_sync() -> None:
-    asyncio.run(main())
+def main() -> None:
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":
-    main_sync()
+    main()
