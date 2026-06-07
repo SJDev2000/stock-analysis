@@ -1,0 +1,28 @@
+[project]
+name = "stock-analysis-mcp"
+version = "1.0.0"
+description = "Financial analysis MCP server — SEC EDGAR fundamentals + Reddit/Stocktwits sentiment"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["mcp", "finance", "stock-analysis", "claude", "edgar", "sentiment"]
+dependencies = [
+    "claude-agent-sdk>=0.2.80",
+    "anyio>=4.0",
+    "edgar-sec>=0.5",
+    "pandas>=2.0",
+    "httpx>=0.24",
+    "python-dotenv>=1.0",
+    "mcp>=1.0",
+]
+
+[project.scripts]
+stock-analysis       = "run_agent:main"
+stock-analysis-mcp   = "mcp_server:main_sync"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools"]
