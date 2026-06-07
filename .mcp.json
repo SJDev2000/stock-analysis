@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "stock-analysis": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "stock_analysis.mcp_server"],
+      "env": {
+        "REDDIT_USERNAME": "${REDDIT_USERNAME}"
+      }
+    }
+  }
+}
