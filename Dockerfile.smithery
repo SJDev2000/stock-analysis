@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e . 2>/dev/null || pip install --no-cache-dir \
+    "claude-agent-sdk>=0.2.80" \
+    "anyio>=4.0" \
+    "edgar-sec>=0.5" \
+    "pandas>=2.0" \
+    "httpx>=0.24" \
+    "python-dotenv>=1.0" \
+    "mcp>=1.0"
+
+# Copy project
+COPY . .
+
+# Artifacts directory (overwritten each run, not persisted)
+RUN mkdir -p artifacts/edgar artifacts/reddit artifacts/stocktwits
+
+CMD ["python", "/app/mcp_server.py"]
