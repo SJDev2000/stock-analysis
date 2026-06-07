@@ -1,6 +1,22 @@
 # Stock Analysis MCP
 
+[![smithery badge](https://smithery.ai/badge/@SJDev2000/stock-analysis)](https://smithery.ai/server/@SJDev2000/stock-analysis)
+[![PyPI version](https://badge.fury.io/py/stock-analysis-mcp.svg)](https://badge.fury.io/py/stock-analysis-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A financial analysis MCP server built on the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-python). Provides 8 production-grade tools covering SEC EDGAR fundamentals and real-time social sentiment (Reddit + Stocktwits). Works as a **standalone CLI agent** or as a **Claude Code / Claude Desktop plugin**.
+
+### One-command install (Claude Code)
+
+```bash
+claude mcp add stock-analysis -- uvx stock-analysis-mcp
+```
+
+Or from the [Smithery marketplace](https://smithery.ai/server/@SJDev2000/stock-analysis):
+
+```bash
+npx @smithery/cli install @SJDev2000/stock-analysis --client claude
+```
 
 ---
 
@@ -119,16 +135,25 @@ The MCP server exposes the full bundle in one connection: **8 tools** (raw data 
 
 ### Install in Claude Code
 
+**From PyPI (recommended — no git clone needed):**
+
+```bash
+claude mcp add stock-analysis -- uvx stock-analysis-mcp
+```
+
+`uvx` downloads and runs the package in an isolated environment automatically.
+Set your Reddit username (used as the User-Agent header for public RSS):
+
+```bash
+claude mcp add stock-analysis -e REDDIT_USERNAME=your_username -- uvx stock-analysis-mcp
+```
+
+**From source (development):**
+
 ```bash
 git clone https://github.com/SJDev2000/stock-analysis
 cd stock-analysis
 pip install -e .
-claude mcp add stock-analysis -- python /path/to/stock-analysis/mcp_server.py
-```
-
-Or using the installed entry point:
-
-```bash
 claude mcp add stock-analysis -- stock-analysis-mcp
 ```
 
