@@ -208,29 +208,31 @@ async def analyze_company_profile(args: Dict[str, Any]) -> Dict[str, Any]:
 
 @tool(
     "analyze_financial_ratios",
-    "Pure computation tool — does NOT fetch data. Takes pre-fetched income statement, "
-    "balance sheet, and cash flow data (JSON from the other tools) and computes "
-    "profitability ratios (ROE, ROA, ROIC, margins), leverage ratios (D/E, interest "
-    "coverage, net debt/EBITDA), valuation metrics (BV/share, EPS, FCF/share), and "
-    "operating efficiency ratios (asset turnover, DSO, DIO, DPO, cash conversion cycle). "
-    "Call analyze_income_statement, analyze_balance_sheet, and analyze_cash_flow FIRST, "
-    "then pass their JSON outputs here.",
+    "Reads the three pre-saved EDGAR artifacts for a ticker (income statement, balance sheet, "
+    "cash flow) and computes profitability ratios (ROE, ROA, ROIC, margins), leverage ratios "
+    "(D/E, interest coverage, net debt/EBITDA), valuation metrics (BV/share, EPS, FCF/share), "
+    "and operating efficiency ratios (asset turnover, DSO, DIO, DPO, cash conversion cycle). "
+    "Call analyze_income_statement, analyze_balance_sheet, and analyze_cash_flow for the ticker "
+    "first so the artifacts exist on disk.",
     {
-        "income_data":       Annotated[str, "JSON string from analyze_income_statement tool output"],
-        "balance_sheet_data":Annotated[str, "JSON string from analyze_balance_sheet tool output"],
-        "cash_flow_data":    Annotated[str, "JSON string from analyze_cash_flow tool output"],
+        "ticker": Annotated[str, "Stock ticker symbol, e.g. AAPL"],
     },
 )
 async def analyze_financial_ratios(args: Dict[str, Any]) -> Dict[str, Any]:
-    def parse(v):
-        return json.loads(v) if isinstance(v, str) else v
+    ticker = args["ticker"].upper()
+
+    def load_artifact(report_type: str) -> Dict[str, Any]:
+        path = EdgarUtils.asset_path(ticker, report_type)
+        if not path.exists():
+            raise FileNotFoundError(f"Artifact not found: {path}. Run the corresponding analyze_ tool for {ticker} first.")
+        return json.loads(path.read_text())
 
     try:
-        income_raw   = parse(args["income_data"])
-        balance_raw  = parse(args["balance_sheet_data"])
-        cashflow_raw = parse(args["cash_flow_data"])
-    except (json.JSONDecodeError, KeyError) as e:
-        return EdgarUtils.err_response(f"Invalid input data: {e}")
+        income_raw   = load_artifact("income_statement")
+        balance_raw  = load_artifact("balance_sheet")
+        cashflow_raw = load_artifact("cash_flow")
+    except FileNotFoundError as e:
+        return EdgarUtils.err_response(str(e))
 
     income_statements = income_raw.get("report", {}).get("annual_statements", [])
     balance_sheets    = balance_raw.get("balance_sheets", [])
@@ -239,7 +241,6 @@ async def analyze_financial_ratios(args: Dict[str, Any]) -> Dict[str, Any]:
     if not income_statements:
         return EdgarUtils.err_response("No income statement data provided")
 
-    ticker       = income_raw.get("ticker", "")
     company_name = income_raw.get("company_name", "")
 
     ratios: List[Dict[str, Any]] = []
