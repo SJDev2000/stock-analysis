@@ -1,0 +1,105 @@
+# Smithery MCP Plugin Marketplace — https://smithery.ai
+# Publish: push this file + your code to GitHub, then connect the repo at smithery.ai
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      REDDIT_USERNAME:
+        type: string
+        description: >
+          Reddit username used as the User-Agent header for public RSS requests
+          (no OAuth or password needed — just your username).
+        default: ""
+      ANTHROPIC_API_KEY:
+        type: string
+        description: >
+          Anthropic API key (sk-ant-…).  Required only when running the CLI
+          agent (run_agent.py).  The MCP server itself does NOT call the API —
+          Claude calls the tools.
+        default: ""
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "uvx",
+      args: ["stock-analysis-mcp"],
+      env: {
+        ...(config.REDDIT_USERNAME ? { REDDIT_USERNAME: config.REDDIT_USERNAME } : {}),
+        ...(config.ANTHROPIC_API_KEY ? { ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY } : {}),
+      },
+    })
+
+# ── Marketplace metadata ──────────────────────────────────────────────────────
+
+build:
+  dockerfile: Dockerfile.smithery   # optional container build (see below)
+
+name: stock-analysis
+displayName: "Stock Analysis MCP"
+description: >
+  Financial analysis plugin for Claude Code and Claude Desktop.
+  Covers SEC EDGAR fundamentals (income statement, balance sheet, cash flow,
+  20+ ratios) and real-time social sentiment (Reddit + Stocktwits).
+  Invoke structured reports directly from Claude with a single slash command.
+
+icon: "📈"
+version: "1.0.0"
+license: MIT
+
+categories:
+  - finance
+  - data
+  - analysis
+
+tags:
+  - stocks
+  - finance
+  - sec-edgar
+  - sentiment
+  - reddit
+  - stocktwits
+  - fundamentals
+  - mcp
+
+homepage: https://github.com/SJDev2000/stock-analysis
+repository: https://github.com/SJDev2000/stock-analysis
+issues: https://github.com/SJDev2000/stock-analysis/issues
+
+# ── Tools advertised to Smithery ─────────────────────────────────────────────
+
+tools:
+  - name: analyze_income_statement
+    description: "5-year annual + 4-quarter income statement from SEC EDGAR with YoY/QoQ growth and CAGR"
+  - name: analyze_balance_sheet
+    description: "Multi-year balance sheet with working capital, debt ratios, and liquidity metrics"
+  - name: analyze_cash_flow
+    description: "Operating / investing / financing cash flows, FCF margin, CapEx intensity"
+  - name: analyze_company_profile
+    description: "Company identity, exchange, SIC, business overview, and risk factors from latest 10-K"
+  - name: analyze_financial_ratios
+    description: "20+ financial ratios (ROE, ROIC, FCF margin, D/E, CCC, …) computed from EDGAR filings"
+  - name: fetch_reddit_posts
+    description: "Phase-1 Reddit fetch — post titles and text for relevance filtering (no comments)"
+  - name: fetch_reddit_comments
+    description: "Phase-2 Reddit fetch — full comment threads for kept posts"
+  - name: fetch_stocktwits_stream
+    description: "30 latest Stocktwits messages with labeled Bullish/Bearish sentiment"
+
+# ── Prompts / skills advertised to Smithery ──────────────────────────────────
+
+prompts:
+  - name: sentiment-analysis
+    description: "11-section combined Reddit + Stocktwits sentiment report with composite FSS and trading signal"
+  - name: fundamental-analysis
+    description: "Investment-grade fundamental report: income, balance sheet, cash flow, 20+ ratios, scorecard"
+  - name: income-statement-analysis
+    description: "Structured income statement analysis with margin trends and segment breakdown"
+  - name: balance-sheet-analysis
+    description: "Balance sheet analysis with liquidity, leverage, and working capital metrics"
+  - name: cash-flow-analysis
+    description: "Cash flow analysis with FCF, CapEx intensity, and capital allocation"
+  - name: company-overview
+    description: "Company identity, capital structure, and classified risk factors from 10-K"
+  - name: stocktwits-sentiment
+    description: "Compact Stocktwits-only sentiment score with FSS, signal distribution, and top themes"
