@@ -22,8 +22,8 @@ startCommand:
     required: []
   commandFunction: |-
     (config) => ({
-      command: "uvx",
-      args: ["stock-analysis-mcp"],
+      command: "python",
+      args: ["-m", "stock_analysis.mcp_server"],
       env: {
         ...(config.REDDIT_USERNAME ? { REDDIT_USERNAME: config.REDDIT_USERNAME } : {}),
         ...(config.ANTHROPIC_API_KEY ? { ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY } : {}),
