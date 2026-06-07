@@ -36,6 +36,26 @@ sys.path.insert(0, str(Path(__file__).parent))
 from dotenv import load_dotenv
 load_dotenv()
 
+# ── Skill file resolution (works both in dev and after pip/uvx install) ───────
+def _resolve_skills_dir() -> Path:
+    # 1. Installed package: importlib.resources (Python 3.9+)
+    try:
+        from importlib.resources import files
+        pkg = files("skills")
+        # Verify at least one expected file exists
+        if (pkg / "sentiment-analysis.md").is_file():
+            return Path(str(pkg))
+    except Exception:
+        pass
+    # 2. Dev checkout: .claude/skills/ next to this file
+    dev_path = Path(__file__).parent / ".claude" / "skills"
+    if dev_path.is_dir():
+        return dev_path
+    raise RuntimeError(
+        "Skills directory not found. Run `pip install -e .` in the project root "
+        "or ensure .claude/skills/ exists."
+    )
+
 import mcp.types as types
 from mcp.server.lowlevel.server import Server
 from mcp.server.stdio import stdio_server
@@ -54,7 +74,7 @@ from tools.stocktwits import fetch_stocktwits_stream
 
 # ── Skill (prompt) definitions ───────────────────────────────────────────────
 
-_SKILLS_DIR = Path(__file__).parent / ".claude" / "skills"
+_SKILLS_DIR = _resolve_skills_dir()
 
 def _load_skill(filename: str) -> str:
     return (_SKILLS_DIR / filename).read_text(encoding="utf-8")
