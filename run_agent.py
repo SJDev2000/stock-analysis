@@ -32,10 +32,10 @@ from claude_agent_sdk import (
     ResultMessage,
     ClaudeSDKClient,
     TextBlock,
-    ThinkingConfigDisabled,
     query,
 )
 
+from claude_agent_sdk.types import ThinkingConfigAdaptive
 from tools.server import edgar_server
 
 
@@ -64,7 +64,7 @@ def _build_options(
 ) -> ClaudeAgentOptions:
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     base_url = os.getenv("ANTHROPIC_BASE_URL", "")
-    default_model = os.getenv("ANTHROPIC_MODEL", "us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+    default_model = os.getenv("ANTHROPIC_MODEL", "us.anthropic.claude-sonnet-4-6")
 
     env = {"ANTHROPIC_API_KEY": api_key}
     if base_url:
@@ -73,22 +73,47 @@ def _build_options(
     if reddit_username:
         env["REDDIT_USERNAME"] = reddit_username
 
+    system_prompt = (
+        "You are a stock analysis assistant. "
+        "For every user request, extract the ticker symbol and determine which analysis to run:\n"
+        "- If the request mentions 'sentiment', 'reddit', 'stocktwits', 'social', or 'crowd': "
+        "invoke Skill(skill='sentiment-analysis', args='<TICKER>').\n"
+        "- If the request mentions 'fundamental', 'financials', 'income', 'balance sheet', 'cash flow', or 'earnings': "
+        "invoke Skill(skill='fundamental-analysis', args='<TICKER>').\n"
+        "- If the request mentions both (or asks for a 'full' or 'complete' analysis): "
+        "invoke both skills in sequence — fundamental-analysis first, then sentiment-analysis.\n"
+        "- If no clear category is specified, default to fundamental-analysis.\n"
+        "Do not answer from memory, do not generate free-form text, do not call any tools directly. "
+        "Your only actions are to invoke the appropriate skill(s)."
+    )
+
     return ClaudeAgentOptions(
         model=model or default_model,
-        max_turns=max_turns or 25,
+        max_turns=max_turns or 30,
         mcp_servers={"edgar": edgar_server},
         allowed_tools=[
-            "Bash(read:*)",
-            "Read",
-            "mcp__edgar__*",
+            "Skill",
             "Agent",
+            "mcp__stock-analysis__*",
+            "mcp__edgar__*",
         ],
         permission_mode="acceptEdits",
         env=env,
-        thinking=ThinkingConfigDisabled(type="disabled"),
-        skills="all",
+        thinking=ThinkingConfigAdaptive(type="adaptive"),
+        effort="high",
         include_partial_messages=stream,
         cwd=str(Path(__file__).parent),
+        skills=[
+            "fundamental-analysis",
+            "income-statement",
+            "balance-sheet",
+            "cash-flow",
+            "sentiment-analysis",
+            "reddit-sentiment",
+            "stocktwits-sentiment",
+            "company-overview",
+        ],
+        system_prompt=system_prompt,
     )
 
 
