@@ -6,6 +6,16 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 keywords = ["mcp", "finance", "stock-analysis", "claude", "edgar", "sentiment"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+]
 dependencies = [
     "claude-agent-sdk>=0.2.80",
     "anyio>=4.0",
@@ -16,6 +26,11 @@ dependencies = [
     "mcp>=1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/SJDev2000/stock-analysis"
+Repository = "https://github.com/SJDev2000/stock-analysis"
+Issues = "https://github.com/SJDev2000/stock-analysis/issues"
+
 [project.scripts]
 stock-analysis       = "run_agent:main"
 stock-analysis-mcp   = "mcp_server:main_sync"
@@ -25,4 +40,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tools"]
+# Include both tools/ and the skills/ package (contains .md skill templates)
+packages = ["tools", "skills"]
+
+[tool.hatch.build.targets.wheel.force-include]
+# Ensure .md files are included as package data
+"skills" = "skills"
