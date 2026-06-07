@@ -169,12 +169,52 @@ _SDK_TOOLS = [
 _TOOL_MAP = {t.name: t for t in _SDK_TOOLS}
 
 
+_ANNOTATED_TYPE_MAP = {
+    int: "integer",
+    float: "number",
+    bool: "boolean",
+    str: "string",
+    list: "array",
+}
+
+
+def _annotated_to_json_schema(raw_schema: dict) -> dict:
+    import typing
+    properties = {}
+    required = []
+    for param, annotation in raw_schema.items():
+        origin = getattr(annotation, "__origin__", None)
+        args = getattr(annotation, "__args__", ())
+        if origin is typing.Annotated and args:
+            base_type = args[0]
+            description = args[1] if len(args) > 1 and isinstance(args[1], str) else ""
+            list_origin = getattr(base_type, "__origin__", None)
+            if list_origin is list:
+                item_type = getattr(base_type, "__args__", (str,))[0]
+                prop = {"type": "array", "items": {"type": _ANNOTATED_TYPE_MAP.get(item_type, "string")}}
+            else:
+                prop = {"type": _ANNOTATED_TYPE_MAP.get(base_type, "string")}
+            if description:
+                prop["description"] = description
+            properties[param] = prop
+            required.append(param)
+        else:
+            properties[param] = annotation if isinstance(annotation, dict) else {"type": "string"}
+            required.append(param)
+    return {"type": "object", "properties": properties, "required": required}
+
+
 def _sdk_tool_to_mcp(sdk_tool) -> types.Tool:
     """Convert a claude_agent_sdk SdkMcpTool into an mcp.types.Tool."""
+    raw = sdk_tool.input_schema or {}
+    if raw and "properties" not in raw:
+        schema = _annotated_to_json_schema(raw)
+    else:
+        schema = raw or {"type": "object", "properties": {}}
     return types.Tool(
         name=sdk_tool.name,
         description=sdk_tool.description or "",
-        inputSchema=sdk_tool.input_schema or {"type": "object", "properties": {}},
+        inputSchema=schema,
     )
 
 
