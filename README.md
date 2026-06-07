@@ -9,7 +9,8 @@ A financial analysis MCP server built on the [Claude Agent SDK](https://github.c
 ### One-command install (Claude Code)
 
 ```bash
-claude mcp add stock-analysis -- uvx stock-analysis-mcp
+pip install stock-analysis-mcp
+claude mcp add stock-analysis -e REDDIT_USERNAME=your_username -- python -m stock_analysis.mcp_server
 ```
 
 Or from the [Smithery marketplace](https://smithery.ai/server/@SJDev2000/stock-analysis):
@@ -138,14 +139,8 @@ The MCP server exposes the full bundle in one connection: **8 tools** (raw data 
 **From PyPI (recommended — no git clone needed):**
 
 ```bash
-claude mcp add stock-analysis -- uvx stock-analysis-mcp
-```
-
-`uvx` downloads and runs the package in an isolated environment automatically.
-Set your Reddit username (used as the User-Agent header for public RSS):
-
-```bash
-claude mcp add stock-analysis -e REDDIT_USERNAME=your_username -- uvx stock-analysis-mcp
+pip install stock-analysis-mcp
+claude mcp add stock-analysis -e REDDIT_USERNAME=your_username -- python -m stock_analysis.mcp_server
 ```
 
 **From source (development):**
