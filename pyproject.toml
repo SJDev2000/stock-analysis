@@ -33,7 +33,7 @@ Issues = "https://github.com/SJDev2000/stock-analysis/issues"
 
 [project.scripts]
 stock-analysis       = "stock_analysis.run_agent:main"
-stock-analysis-mcp   = "stock_analysis.mcp_server:main_sync"
+stock-analysis-mcp   = "mcp_server:main"
 
 [build-system]
 requires = ["hatchling"]
