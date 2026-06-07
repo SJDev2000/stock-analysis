@@ -113,29 +113,45 @@ print(f"Report: {result.report_path}")
 
 ---
 
-## Usage — Claude Code plugin
+## Usage — Claude Code / Claude Desktop plugin
 
-Install directly into Claude Code:
+The MCP server exposes the full bundle in one connection: **8 tools** (raw data access) and **7 prompts** (skills — invoke with a ticker to run a full structured report).
+
+### Install in Claude Code
 
 ```bash
-claude mcp add stock-analysis -- python /path/to/stock_analysis/mcp_server.py
+git clone https://github.com/SJDev2000/stock-analysis
+cd stock-analysis
+pip install -e .
+claude mcp add stock-analysis -- python /path/to/stock-analysis/mcp_server.py
 ```
 
-Or using the installed entry point after `pip install -e .`:
+Or using the installed entry point:
 
 ```bash
 claude mcp add stock-analysis -- stock-analysis-mcp
 ```
 
-Once installed, all 8 tools are available in any Claude Code session:
+Once connected, skills appear as slash commands in any Claude Code session:
 
 ```
-> fetch_stocktwits_stream for AAPL
-> fetch_reddit_posts for NVDA with time_filter week
-> analyze_income_statement for MSFT
+/stock-analysis:sentiment-analysis      → prompts for ticker, runs 11-section report
+/stock-analysis:fundamental-analysis    → prompts for ticker, runs full EDGAR report
+/stock-analysis:income-statement-analysis
+/stock-analysis:balance-sheet-analysis
+/stock-analysis:cash-flow-analysis
+/stock-analysis:company-overview
+/stock-analysis:stocktwits-sentiment
 ```
 
-### Claude Desktop plugin
+Tools are also directly available for raw data access:
+
+```
+mcp__stock-analysis__fetch_stocktwits_stream   ticker=AAPL
+mcp__stock-analysis__analyze_income_statement  ticker=MSFT
+```
+
+### Install in Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
@@ -144,9 +160,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "stock-analysis": {
       "command": "python",
-      "args": ["/absolute/path/to/stock_analysis/mcp_server.py"],
+      "args": ["/absolute/path/to/stock-analysis/mcp_server.py"],
       "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-...",
         "REDDIT_USERNAME": "your_username"
       }
     }
